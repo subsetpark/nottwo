@@ -1,5 +1,7 @@
 defmodule Rexdb.Table do
-  defstruct [data: %{}, columns: [:id]]
+  defstruct data: %{}, columns: [:id]
+
+  @type t :: %__MODULE__{columns: [atom()], data: map()}
 
   def insert(%__MODULE__{data: data} = table, id, attrs) do
     attrs = Map.put(attrs, :id, id)
@@ -9,7 +11,9 @@ defmodule Rexdb.Table do
 end
 
 defmodule Rexdb.Db do
-  defstruct [tables: %{}]
+  defstruct tables: %{}
+
+  @type t :: %__MODULE__{tables: map()}
 
   def create_table(%__MODULE__{tables: tables} = db, name, columns) do
     table = %Rexdb.Table{columns: columns}
