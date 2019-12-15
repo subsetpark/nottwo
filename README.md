@@ -11,3 +11,7 @@ Filtering by iteration and predication.
 ### II
 
 Joins.
+
+### III
+
+Use gb-trees for data store (from a library, not my own!).

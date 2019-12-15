@@ -10,8 +10,8 @@ defmodule QueryTest do
         %Query{where: [eq: [:id, 1]]}
         |> Query.compile()
 
-      assert compiled._pred.(%{id: 1})
-      refute compiled._pred.(%{id: 0})
+      assert compiled._pred.({:ok, %{id: 1}})
+      refute compiled._pred.({:ok, %{id: 0}})
     end
 
     test "will produce a compound predicate" do
@@ -19,8 +19,8 @@ defmodule QueryTest do
         %Query{where: [eq: [:id, 1], lt: [:age, 100]]}
         |> Query.compile()
 
-      assert compiled._pred.(%{id: 1, age: 99})
-      refute compiled._pred.(%{id: 0, age: 101})
+      assert compiled._pred.({:ok, %{id: 1, age: 99}})
+      refute compiled._pred.({:ok, %{id: 0, age: 101}})
     end
 
     test "will join on other tables" do
@@ -90,7 +90,11 @@ defmodule TableTest do
         %Table{columns: [:id, :age]}
         |> Table.insert(id, %{age: 32_000})
 
-      assert table.data[id][:age] == 32_000
+      row =
+        table
+        |> Table.retrieve(id)
+
+      assert row[:age] == 32_000
     end
   end
 
@@ -119,7 +123,7 @@ end
 defmodule RexdbTest do
   use ExUnit.Case
 
-  alias Rexdb.{Db, Query}
+  alias Rexdb.{Db, Query, Table}
 
   setup [:setup_db]
 
@@ -127,7 +131,8 @@ defmodule RexdbTest do
     test "will insert rows", %{db: db} do
       {id, inserted} = db |> Rexdb.insert(:users, %{age: 3_000})
 
-      assert inserted.tables[:users].data[id][:age] == 3_000
+      row = Table.retrieve(inserted.tables[:users], id)
+      assert row[:age] == 3_000
     end
   end
 
@@ -165,8 +170,7 @@ defmodule RexdbTest do
       {_, db} = Rexdb.insert(db, :teams, %{user_id: user_id, name: "falcons"})
       {_, db} = Rexdb.insert(db, :teams, %{name: "penguins"})
 
-      {:ok, [row]} =
-        Rexdb.query(db, compiled)
+      {:ok, [row]} = Rexdb.query(db, compiled)
 
       assert %{name: "falcons"} == row
     end

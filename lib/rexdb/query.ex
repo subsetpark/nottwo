@@ -1,4 +1,6 @@
 defmodule Rexdb.Join do
+  alias Rexdb.Table
+
   @type clause :: {atom(), atom()}
   @type t :: (map(), map() -> map)
 
@@ -8,8 +10,8 @@ defmodule Rexdb.Join do
   @spec compile(clause) :: t()
   def compile({table, on}) do
     fn row, db ->
-      with %{data: data} <- db.tables[table],
-           {_, join_row} <- Enum.find(data, fn {_, join_row} -> row[on] == join_row[:id] end) do
+      with %Table{} = t <- db.tables[table],
+           {_, join_row} <- Enum.find(t, fn {_, join_row} -> row[on] == join_row[:id] end) do
         Enum.into(join_row, row, fn {key, value} -> {:"#{table}.#{key}", value} end)
       else
         _ -> row
@@ -39,7 +41,7 @@ defmodule Rexdb.Where do
   def compose(g, f), do: &(f.(&1) && g.(&1))
 
   defp where(pred, field, value) do
-    fn row ->
+    fn {_, row} ->
       row_value = Map.get(row, field)
       # TODO: Update to allow IS NULL
       not is_nil(row_value) && pred.(row_value, value)
