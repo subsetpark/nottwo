@@ -1,25 +1,74 @@
+defmodule Rexdb.Join do
+  @type clause :: {atom(), atom()}
+  @type t :: (map(), map() -> map)
+
+  @spec id :: t()
+  def id, do: fn row, _ -> row end
+
+  @spec compile(clause) :: t()
+  def compile({table, on}) do
+    fn row, db ->
+      with %{data: data} <- db.tables[table],
+           {_, join_row} <- Enum.find(data, fn {_, join_row} -> row[on] == join_row[:id] end) do
+        Enum.into(join_row, row, fn {key, value} -> {:"#{table}.#{key}", value} end)
+      else
+        _ -> row
+      end
+    end
+  end
+
+  @spec compose(t(), t()) :: t()
+  def compose(g, f), do: &(f.(&1, &2) |> g.(&2))
+end
+
+defmodule Rexdb.Where do
+  @type clause :: {atom(), list()}
+  @type t :: (map -> boolean)
+
+  @spec id :: t()
+  def id, do: fn _ -> true end
+
+  @spec compile(clause) :: t()
+  def compile({:eq, [field, value]}), do: where(&==/2, field, value)
+  def compile({:lt, [field, value]}), do: where(&</2, field, value)
+  def compile({:lte, [field, value]}), do: where(&<=/2, field, value)
+  def compile({:gt, [field, value]}), do: where(&>/2, field, value)
+  def compile({:gte, [field, value]}), do: where(&>=/2, field, value)
+
+  @spec compose(t(), t()) :: t()
+  def compose(g, f), do: &(f.(&1) && g.(&1))
+
+  defp where(pred, field, value) do
+    fn row ->
+      row_value = Map.get(row, field)
+      # TODO: Update to allow IS NULL
+      not is_nil(row_value) && pred.(row_value, value)
+    end
+  end
+end
+
 defmodule Rexdb.Query do
+  alias Rexdb.{Join, Where}
+
   @derive {Inspect, only: [:select, :from, :where, :join]}
   defstruct [:select, :from, where: [], join: [], _getter: nil, _pred: nil, _compiled: false]
 
-  @type clause :: {atom(), list()}
-  @type join_on :: {atom(), atom()}
+  @type clause :: Join.clause() | Where.clause()
 
-  @type query_predicate :: (map -> boolean)
-  @type getter :: (map -> map)
+  @type compiled_fn :: Join.t() | Where.t()
 
   @type uncompiled :: %__MODULE__{
           select: [atom()],
           from: atom(),
-          join: [join_on()],
-          where: [clause],
+          join: [Join.clause()],
+          where: [Where.clause()],
           _compiled: false
         }
   @type compiled :: %__MODULE__{
           select: [atom()],
           from: atom(),
-          _getter: getter(),
-          _pred: query_predicate(),
+          _getter: Join.t(),
+          _pred: Where.t(),
           _compiled: true
         }
   @type t :: compiled() | uncompiled()
@@ -27,61 +76,18 @@ defmodule Rexdb.Query do
   @spec compile(uncompiled()) :: compiled()
   def compile(%__MODULE__{where: where, join: join} = q) do
     q
-    |> Map.put(:_getter, compile_join(join))
-    |> Map.put(:_pred, compile_where(where))
+    |> Map.put(:_getter, compile(join, Join))
+    |> Map.put(:_pred, compile(where, Where))
     |> Map.put(:_compiled, true)
   end
 
-  @spec compile_join([join_on]) :: getter()
-  defp compile_join(joins) when is_list(joins) do
-    Enum.reduce(joins, fn row, _ -> row end, fn join, getter ->
-      getter1 = compile_join_on(join)
-
-      fn row, db ->
-        getter.(row, db) |> getter1.(db)
-      end
+  @spec compile([clause], Join | Where) :: compiled_fn()
+  defp compile(clauses, type) when is_list(clauses) do
+    clauses
+    |> Enum.reduce(type.id(), fn clause, f ->
+      clause
+      |> type.compile()
+      |> type.compose(f)
     end)
-  end
-
-  @spec compile_where([clause]) :: query_predicate()
-  defp compile_where(wheres) when is_list(wheres) do
-    Enum.reduce(wheres, fn _ -> true end, fn clause, pred ->
-      pred1 = compile_clause(clause)
-
-      fn row ->
-        pred.(row) && pred1.(row)
-      end
-    end)
-  end
-
-  defp compile_join_on({table, on}) do
-    fn row, db ->
-      db.tables[table]
-      |> Map.get(:data)
-      |> Enum.find(fn {_, join_row} -> row[on] == join_row[:id] end)
-      |> case do
-        nil ->
-          row
-
-        {_, join_row} ->
-          join_row
-          |> Enum.into(%{}, fn {key, value} -> {:"#{table}.#{key}", value} end)
-          |> Map.merge(row)
-      end
-    end
-  end
-
-  defp compile_clause({:eq, [field, value]}), do: do_compile(&==/2, field, value)
-  defp compile_clause({:lt, [field, value]}), do: do_compile(&</2, field, value)
-  defp compile_clause({:lte, [field, value]}), do: do_compile(&<=/2, field, value)
-  defp compile_clause({:gt, [field, value]}), do: do_compile(&>/2, field, value)
-  defp compile_clause({:gte, [field, value]}), do: do_compile(&>=/2, field, value)
-
-  defp do_compile(pred, field, value) do
-    fn row ->
-      row_value = Map.get(row, field)
-      # TODO: Update to allow IS NULL
-      not is_nil(row_value) && pred.(row_value, value)
-    end
   end
 end
