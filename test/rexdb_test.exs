@@ -10,8 +10,8 @@ defmodule QueryTest do
         %Query{where: [eq: [:id, 1]]}
         |> Query.compile()
 
-      assert compiled.where.(%{id: 1})
-      refute compiled.where.(%{id: 0})
+      assert compiled._pred.(%{id: 1})
+      refute compiled._pred.(%{id: 0})
     end
 
     test "will produce a compound predicate" do
@@ -19,8 +19,58 @@ defmodule QueryTest do
         %Query{where: [eq: [:id, 1], lt: [:age, 100]]}
         |> Query.compile()
 
-      assert compiled.where.(%{id: 1, age: 99})
-      refute compiled.where.(%{id: 0, age: 101})
+      assert compiled._pred.(%{id: 1, age: 99})
+      refute compiled._pred.(%{id: 0, age: 101})
+    end
+
+    test "will join on other tables" do
+      compiled =
+        %Query{
+          select: [:name],
+          from: :teams,
+          join: [users: :user_id]
+        }
+        |> Query.compile()
+
+      {user_id, db} =
+        %Rexdb.Db{}
+        |> Rexdb.Db.create_table(:users, [:id, :age])
+        |> Rexdb.insert(:users, %{age: 3_000})
+
+      row = %{name: "falcons", user_id: user_id}
+
+      got = compiled._getter.(row, db)
+
+      assert got == %{name: "falcons", user_id: user_id, "users.age": 3_000, "users.id": user_id}
+    end
+
+    test "will join on multiple tables" do
+      compiled =
+        %Query{
+          select: [:name],
+          from: :teams,
+          join: [users: :user_id, flags: :flag_id]
+        }
+        |> Query.compile()
+
+      {user_id, db} =
+        %Rexdb.Db{}
+        |> Rexdb.Db.create_table(:users, [:id])
+        |> Rexdb.Db.create_table(:flags, [:id])
+        |> Rexdb.insert(:users, %{})
+
+      {flag_id, db} = Rexdb.insert(db, :flags, %{})
+
+      row = %{user_id: user_id, flag_id: flag_id}
+
+      got = compiled._getter.(row, db)
+
+      assert got == %{
+               user_id: user_id,
+               "users.id": user_id,
+               flag_id: flag_id,
+               "flags.id": flag_id
+             }
     end
   end
 end
@@ -94,6 +144,31 @@ defmodule RexdbTest do
 
       assert row[:age] == 3_000
       assert row[:id] == id
+    end
+
+    test "will join on other tables" do
+      compiled =
+        %Query{
+          select: [:name],
+          from: :teams,
+          join: [users: :user_id],
+          where: [gt: [:"users.age", 2_000]]
+        }
+        |> Query.compile()
+
+      {user_id, db} =
+        %Rexdb.Db{}
+        |> Rexdb.Db.create_table(:users, [:id, :age])
+        |> Rexdb.Db.create_table(:teams, [:id, :name])
+        |> Rexdb.insert(:users, %{age: 3_000})
+
+      {_, db} = Rexdb.insert(db, :teams, %{user_id: user_id, name: "falcons"})
+      {_, db} = Rexdb.insert(db, :teams, %{name: "penguins"})
+
+      {:ok, [row]} =
+        Rexdb.query(db, compiled)
+
+      assert %{name: "falcons"} == row
     end
   end
 
