@@ -1,5 +1,5 @@
-defmodule Rexdb.Join do
-  alias Rexdb.Table
+defmodule Nottwo.Join do
+  alias Nottwo.Table
 
   @type clause :: {atom(), atom()}
   @type t :: (map(), map() -> map)
@@ -23,7 +23,7 @@ defmodule Rexdb.Join do
   def compose(g, f), do: &(f.(&1, &2) |> g.(&2))
 end
 
-defmodule Rexdb.Where do
+defmodule Nottwo.Where do
   @type clause :: {atom(), list()}
   @type t :: (map -> boolean)
 
@@ -49,8 +49,8 @@ defmodule Rexdb.Where do
   end
 end
 
-defmodule Rexdb.Query do
-  alias Rexdb.{Join, Where}
+defmodule Nottwo.Query do
+  alias Nottwo.{Join, Where}
 
   @derive {Inspect, only: [:select, :from, :where, :join]}
   defstruct [:select, :from, where: [], join: [], _getter: nil, _pred: nil, _compiled: false]

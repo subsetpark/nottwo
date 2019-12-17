@@ -1,4 +1,4 @@
-defmodule Rexdb.Table do
+defmodule Nottwo.Table do
   defstruct data: :gb_trees.empty(), columns: [:id]
 
   @type t :: %__MODULE__{columns: [atom()], data: map()}
@@ -33,8 +33,8 @@ defmodule Rexdb.Table do
   end
 end
 
-defimpl Enumerable, for: Rexdb.Table do
-  alias Rexdb.Table
+defimpl Enumerable, for: Nottwo.Table do
+  alias Nottwo.Table
   def count(%Table{data: tree}), do: {:ok, :gb_trees.size(tree)}
   def member?(%Table{data: tree}, key), do: {:ok, :gb_trees.is_defined(key, tree)}
 
@@ -68,13 +68,13 @@ defimpl Enumerable, for: Rexdb.Table do
   defp reduce_iter(_, {:halt, acc}, _fun), do: {:halted, acc}
 end
 
-defmodule Rexdb.Db do
+defmodule Nottwo.Db do
   defstruct tables: %{}
 
   @type t :: %__MODULE__{tables: map()}
 
   def create_table(%__MODULE__{tables: tables} = db, name, columns) do
-    table = %Rexdb.Table{columns: columns}
+    table = %Nottwo.Table{columns: columns}
     tables = Map.put(tables, name, table)
     %{db | tables: tables}
   end

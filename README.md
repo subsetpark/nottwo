@@ -1,4 +1,4 @@
-# Rexdb
+# Nottwo
 
 A series of exercises in building a relational database.
 

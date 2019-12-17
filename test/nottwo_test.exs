@@ -1,8 +1,8 @@
 defmodule QueryTest do
   use ExUnit.Case
-  doctest Rexdb
+  doctest Nottwo
 
-  alias Rexdb.Query
+  alias Nottwo.Query
 
   describe "#compile/1" do
     test "will produce a predicate" do
@@ -33,9 +33,9 @@ defmodule QueryTest do
         |> Query.compile()
 
       {user_id, db} =
-        %Rexdb.Db{}
-        |> Rexdb.Db.create_table(:users, [:id, :age])
-        |> Rexdb.insert(:users, %{age: 3_000})
+        %Nottwo.Db{}
+        |> Nottwo.Db.create_table(:users, [:id, :age])
+        |> Nottwo.insert(:users, %{age: 3_000})
 
       row = %{name: "falcons", user_id: user_id}
 
@@ -54,12 +54,12 @@ defmodule QueryTest do
         |> Query.compile()
 
       {user_id, db} =
-        %Rexdb.Db{}
-        |> Rexdb.Db.create_table(:users, [:id])
-        |> Rexdb.Db.create_table(:flags, [:id])
-        |> Rexdb.insert(:users, %{})
+        %Nottwo.Db{}
+        |> Nottwo.Db.create_table(:users, [:id])
+        |> Nottwo.Db.create_table(:flags, [:id])
+        |> Nottwo.insert(:users, %{})
 
-      {flag_id, db} = Rexdb.insert(db, :flags, %{})
+      {flag_id, db} = Nottwo.insert(db, :flags, %{})
 
       row = %{user_id: user_id, flag_id: flag_id}
 
@@ -78,7 +78,7 @@ end
 defmodule TableTest do
   use ExUnit.Case
 
-  alias Rexdb.Table
+  alias Nottwo.Table
 
   @id_n 18_446_744_073_709_551_615
 
@@ -107,7 +107,7 @@ end
 defmodule DbTest do
   use ExUnit.Case
 
-  alias Rexdb.Db
+  alias Nottwo.Db
 
   describe "#create_table/3" do
     test "will result in a table" do
@@ -120,16 +120,16 @@ defmodule DbTest do
   end
 end
 
-defmodule RexdbTest do
+defmodule RexdDbTest do
   use ExUnit.Case
 
-  alias Rexdb.{Db, Query, Table}
+  alias Nottwo.{Db, Query, Table}
 
   setup [:setup_db]
 
   describe "#insert/2" do
     test "will insert rows", %{db: db} do
-      {id, inserted} = db |> Rexdb.insert(:users, %{age: 3_000})
+      {id, inserted} = db |> Nottwo.insert(:users, %{age: 3_000})
 
       row = Table.retrieve(inserted.tables[:users], id)
       assert row[:age] == 3_000
@@ -138,14 +138,14 @@ defmodule RexdbTest do
 
   describe "#query/2" do
     test "will return rows", %{db: db} do
-      {id, inserted} = db |> Rexdb.insert(:users, %{age: 3_000})
-      {_, inserted2} = inserted |> Rexdb.insert(:users, %{age: 1_999})
+      {id, inserted} = db |> Nottwo.insert(:users, %{age: 3_000})
+      {_, inserted2} = inserted |> Nottwo.insert(:users, %{age: 1_999})
 
       query =
         %Query{select: [:id, :age], from: :users, where: [gt: [:age, 2_000]]}
         |> Query.compile()
 
-      {:ok, [row]} = Rexdb.query(inserted2, query)
+      {:ok, [row]} = Nottwo.query(inserted2, query)
 
       assert row[:age] == 3_000
       assert row[:id] == id
@@ -162,15 +162,15 @@ defmodule RexdbTest do
         |> Query.compile()
 
       {user_id, db} =
-        %Rexdb.Db{}
-        |> Rexdb.Db.create_table(:users, [:id, :age])
-        |> Rexdb.Db.create_table(:teams, [:id, :name])
-        |> Rexdb.insert(:users, %{age: 3_000})
+        %Nottwo.Db{}
+        |> Nottwo.Db.create_table(:users, [:id, :age])
+        |> Nottwo.Db.create_table(:teams, [:id, :name])
+        |> Nottwo.insert(:users, %{age: 3_000})
 
-      {_, db} = Rexdb.insert(db, :teams, %{user_id: user_id, name: "falcons"})
-      {_, db} = Rexdb.insert(db, :teams, %{name: "penguins"})
+      {_, db} = Nottwo.insert(db, :teams, %{user_id: user_id, name: "falcons"})
+      {_, db} = Nottwo.insert(db, :teams, %{name: "penguins"})
 
-      {:ok, [row]} = Rexdb.query(db, compiled)
+      {:ok, [row]} = Nottwo.query(db, compiled)
 
       assert %{name: "falcons"} == row
     end

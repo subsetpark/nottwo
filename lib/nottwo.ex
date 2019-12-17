@@ -1,9 +1,9 @@
-defmodule Rexdb do
-  alias Rexdb.{Db, Query, Table}
+defmodule Nottwo do
+  alias Nottwo.{Db, Query, Table}
 
   def insert(%Db{tables: tables} = db, table_name, attrs) do
     id = :crypto.strong_rand_bytes(16)
-    tables = update_in(tables, [table_name], &Rexdb.Table.insert(&1, id, attrs))
+    tables = update_in(tables, [table_name], &Nottwo.Table.insert(&1, id, attrs))
     {id, %{db | tables: tables}}
   end
 
