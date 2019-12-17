@@ -1,5 +1,5 @@
 defmodule Nottwo.Table do
-  defstruct data: :gb_trees.empty(), columns: [:id]
+  defstruct data: :gb_trees.empty(), columns: [:id], indices: %{}
 
   @type t :: %__MODULE__{columns: [atom()], data: map()}
 
@@ -7,6 +7,7 @@ defmodule Nottwo.Table do
     attrs = Map.put(attrs, :id, id)
 
     %{table | data: :gb_trees.insert(id, attrs, data)}
+    |> update_indices(attrs, id)
   end
 
   def retrieve(%__MODULE__{data: data}, id) do
@@ -30,6 +31,29 @@ defmodule Nottwo.Table do
       |> :gb_trees.balance()
 
     %{t | data: data}
+  end
+
+  def add_index(%__MODULE__{indices: indices} = t, columns) do
+    index =
+      t
+      |> Enum.map(fn {id, row} ->
+        # Add [id] so the key is unique
+        {(Map.take(row, columns) |> Map.values()) ++ [id], row}
+      end)
+      |> :gb_trees.from_orddict()
+
+    %{t | indices: Map.put(indices, columns, index)}
+  end
+
+  defp update_indices(%__MODULE__{indices: indices} = t, attrs, id) do
+    indices =
+      indices
+      |> Enum.into(%{}, fn {columns, index} ->
+        key = (Map.take(attrs, columns) |> Map.values()) ++ [id]
+        {columns, :gb_trees.insert(key, attrs, index)}
+      end)
+
+    %{t | indices: indices}
   end
 end
 

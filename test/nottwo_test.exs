@@ -96,6 +96,28 @@ defmodule TableTest do
 
       assert row[:age] == 32_000
     end
+
+    test "will maintain the index" do
+      %{indices: %{[:age] => index}} =
+        %Table{columns: [:id, :age]}
+        |> Table.add_index([:age])
+        |> Table.insert(id(), %{age: 200})
+        |> Table.insert(id(), %{age: 100})
+
+      assert :gb_trees.size(index) == 2
+    end
+  end
+
+  describe "#add_index/2" do
+    test "will create an index" do
+      %{indices: %{[:age] => index}} =
+        %Table{columns: [:id, :age]}
+        |> Table.insert(id(), %{age: 32_000})
+        |> Table.insert(id(), %{age: 32_000})
+        |> Table.add_index([:age])
+
+      assert :gb_trees.size(index) == 2
+    end
   end
 
   defp id do

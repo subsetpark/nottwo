@@ -15,3 +15,7 @@ Joins.
 ### III
 
 Use gb-trees for data store (from a library, not my own!).
+
+### IV
+
+Maintain indices.
